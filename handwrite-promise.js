@@ -15,7 +15,11 @@ class MyPromise {
         this._state = promiseState.PENDING; // 状态
         this._value = undefined; // 数据
         // 在executor中执行resolve & reject,抽离为私有方法
-        executor(this._resolve.bind(this), this._reject.bind(this));
+        try {
+            executor(this._resolve.bind(this), this._reject.bind(this));
+        } catch (error) {
+            this._reject(error);
+        }
     }
 
 
@@ -51,6 +55,8 @@ class MyPromise {
     }
 }
 
-new MyPromise((resolve, reject) => {
-    resolve(1)
+const myPro = new MyPromise((resolve, reject) => {
+    throw new Error(1)
 })
+
+console.log(myPro)
