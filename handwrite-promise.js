@@ -136,6 +136,31 @@ class MyPromise {
         });
     }
 
+    /**
+     * 仅处理失败的场景
+     * @param {Function} onRejected 
+     */
+    catch (onRejected) {
+        // 返回的还是一个promise并且只执行失败的场景
+        return this.then(null, onRejected);
+    }
+
+    /**
+     * 无论成功或失败都会执行的回调
+     * @param {Function} onSettled 
+     */
+    finally(onSettled) {
+        // 返回的还是一个promise,成功和失败都不改变状态
+        // 出现错误的时候改变,then中实现了异常的处理
+        return this.then((data) => {
+            onSettled()
+            return data;
+        }, (reason) => {
+            onSettled()
+            throw reason;
+        })
+    }
+
 
     /**
      * 标记当前任务完成
