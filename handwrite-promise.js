@@ -170,13 +170,42 @@ class MyPromise {
     }
 }
 
-const myPro = new MyPromise((resolve, reject) => {
-    setTimeout(() => {
-        resolve(1)
-    }, 1000)
-})
+// const myPro = new MyPromise((resolve, reject) => {
+//     setTimeout(() => {
+//         resolve(1)
+//     }, 1000)
+// })
 
-myPro.then(() => {
-    console.log(1);
-})
-console.log(myPro)
+// myPro.then(() => {
+//     console.log(1);
+// })
+// console.log(myPro)
+
+// 测试1：promise互操作
+// const pro1 = new MyPromise((resolve, reject) => {
+//     resolve(1);
+// });
+
+// pro1.then((data) => {
+//     console.log(data);
+//     return new Promise((resolve) => {
+//         resolve(2);
+//     })
+// }).then((data) => {
+//     console.log(data)
+// })
+
+// 测试2：使用async关键字
+// function delay(duration) {
+//     return new MyPromise((resolve) => {
+//         setTimeout(() => {
+//             resolve()
+//         }, duration);
+//     })
+// }
+
+// (async function () {
+//     console.log('start');
+//     await delay(2000);
+//     console.log('end');
+// })()
