@@ -50,6 +50,8 @@ class MyPromise {
             executor(this._resolve.bind(this), this._reject.bind(this));
         } catch (error) {
             this._reject(error);
+            // 需要合理的报错
+            console.error(error);
         }
     }
 
@@ -114,7 +116,7 @@ class MyPromise {
                 }
             } catch (error) {
                 reject(error);
-                console.log(error);
+                console.error(error);
             }
         })
     }
@@ -190,13 +192,161 @@ class MyPromise {
         this._value = value;
         this._runHandlers()
     }
+
+    /**
+     * 返回一个已完成的promise
+     * 特殊情况：
+     * 1. 传递的data本身就是es6的promise对象
+     * 2. 传递的data是promiseLike（实现了promiseA+规范），返回新的promise状态和其一样
+     * @param {any} data 
+     */
+    static resolve(data) {
+        if (data instanceof MyPromise) {
+            return data;
+        }
+        return new MyPromise((resolve, reject) => {
+            if (isPromise(data)) {
+                data.then(resolve, reject);
+            } else {
+                resolve(data)
+            }
+        })
+
+    }
+
+    /** 
+     * 得到一个被拒绝的promise
+     * @param {any} reason
+     */
+    static reject(reason) {
+        return new MyPromise((resolve, reject) => {
+            reject(reason)
+        })
+    }
+
+    /**
+     * 得到一个新的promise,该promise的状态取决于
+     * proms的执行，proms是一个迭代器，包含多个Promise
+     * 全部Promise成功则返回的Promise成功，数据为所有
+     * Promise成功的数据，并且顺序是按照传入的顺序排列
+     * 失败则是返回第一个promise失败的原因
+     * @param {iterator} params 
+     */
+    static all(proms) {
+        return new MyPromise((resolve, reject) => {
+            try {
+                // 注意需要保持顺序，迭代器可能没有length
+                const results = []; // 接收成功后的结果
+                // 保证promise的有序，如何知道所有的promise都完成了
+                let count = 0; // promise的计数，循环结束之后就是promise的总数
+                // 循环是不会被promise阻塞的，js是不会阻塞的
+                let fulfilledCount = 0; // 已完成的数量
+                for (const prom of proms) {
+                    let index = count; // 当前循环到的下标，只可以使用let不使用var
+                    // var变量提升提升到外面每次都是同一个var在循环。
+                    count++;
+                    // prom的then表示之前的任务已完成，同时需要保证前面是一个promise,因为可能是数据
+                    MyPromise.resolve(prom).then((data) => {
+                        fulfilledCount++;
+                        results[index] = data;
+                        // 当前是最后一个promise完成
+                        if (fulfilledCount === count) {
+                            resolve()
+                        }
+                    }, reject) // reject只会调用一次保证最先调用的失败让all失败
+                }
+                // 空数组
+                if (count === 0) {
+                    resolve(results);
+                }
+            } catch (error) {
+                // 在执行过程中报错
+                reject(error);
+                console.error(error);
+            }
+        })
+    }
+
+    /**
+     * 等待所有promise有结果后
+     * 该方法返回的promise完成
+     * 并且按照顺序将所有的结果汇总
+     * @param {iterator} proms 
+     */
+    static allSettled(proms) {
+        const ps = [];
+        for (const p of proms) {
+            // 首先保证是一个promise
+            // 无论成功还是失败到时候走两条路返回对应的值的promise都是成功的
+            ps.push(MyPromise.resolve(p).then((value) => ({
+                status: MyPromise.FULFILLED,
+                value,
+            }), (reason) => ({
+                status: MyPromise.REJECTED,
+                reason
+            })))
+        }
+        return MyPromise.all(ps);
+    }
+
+
+    /**
+     * 返回第一个有结果的promise,如果是空数组按照官方设计就是一直等待
+     * @param {iterator} proms 
+     */
+    static race(proms) {
+        // 虽然可能一次遍历有多个结果但是resolve、reject只会响应一次同时当前的
+        // promise的状态是不会更改的。
+        return new MyPromise((resolve, reject) => {
+            for (const p of proms) {
+                MyPromise.resolve(p).then(resolve, reject);
+            }
+        })
+    }
+
+
+    /**
+     * 返回第一个成功的promise,如果都失败返回错误的集合
+     * @param {iterator} proms 
+     */
+    static any(proms) {
+        return new MyPromise((resolve, reject) => {
+            let count = 0;
+            let rejectCount = 0;
+            const rejectPs = [];
+            for (const p of proms) {
+                let index = count;
+                count++;
+                MyPromise.resolve(p).then((data) => {
+                    resolve(data);
+                }, (reason) => {
+                    rejectCount++;
+                    rejectPs[index] = reason
+                    if (rejectCount === count) {
+                        reject(rejectPs);
+                    }
+                })
+            }
+            if (count === 0) {
+                reject(proms);
+            }
+        })
+    }
+
 }
 
-// const myPro = new MyPromise((resolve, reject) => {
-//     setTimeout(() => {
-//         resolve(1)
-//     }, 1000)
-// })
+const myPro = new MyPromise((resolve, reject) => {
+    reject(1)
+})
+
+setTimeout(() => {
+    MyPromise.any([MyPromise.reject(2), myPro]).then((data) => {
+        console.log(data)
+    }, (reason) => {
+        console.log(reason)
+    });
+}, 1000)
+
 
 // myPro.then(() => {
 //     console.log(1);
