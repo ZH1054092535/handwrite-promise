@@ -37,12 +37,42 @@ class MyPromise {
     constructor(executor) {
         this._state = promiseState.PENDING; // 状态
         this._value = undefined; // 数据
+        this._handlers = []; // 处理函数的队列
         // 在executor中执行resolve & reject,抽离为私有方法
         try {
             executor(this._resolve.bind(this), this._reject.bind(this));
         } catch (error) {
             this._reject(error);
         }
+    }
+
+    /**
+     * 向处理队列中添加一个函数
+     * @param {Function} executor 添加函数
+     * @param {String} state 该函数什么状态下执行
+     * @param {Function} resolve 让then函数返回的Promise成功
+     * @param {Function} reject 让then函数返回的Promise失败
+     */
+    _pushHandler(executor, state, resolve, reject) {
+        this._handlers.push({
+            executor,
+            state,
+            resolve,
+            reject
+        })
+    }
+
+    /**
+     * Promise A+规范的then
+     * @param {Function} onFulfilled  状态成功时的执行
+     * @param {Function} onRejected 状态失败时的执行
+     */
+    then(onFulfilled, onRejected) {
+        return new MyPromise((resolve, reject) => {
+            // 注意这里的resolve、reject就是_resolve、_reject
+            this._pushHandler(onFulfilled, promiseState.FULFILLED, resolve, reject);
+            this._pushHandler(onRejected, promiseState.REJECTED, resolve, reject);
+        });
     }
 
 
