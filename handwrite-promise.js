@@ -1,10 +1,3 @@
-// promise的三种状态
-const promiseState = {
-    'PENDING': 'pending',
-    'FULFILLED': 'fulfilled',
-    'REJECTED': 'rejected'
-}
-
 /**
  * 运行一个微队列任务
  * 把传递的函数放到微队列中
@@ -39,13 +32,17 @@ function isPromise(obj) {
 }
 
 class MyPromise {
+    // promise的三种状态
+    static PENDING = 'pending';
+    static FULFILLED = 'fulfilled';
+    static REJECTED = 'rejected';
 
     /**
      * 创建一个Promise
      * @param {Function} executor 任务执行器，立即执行
      */
     constructor(executor) {
-        this._state = promiseState.PENDING; // 状态
+        this._state = MyPromise.PENDING; // 状态
         this._value = undefined; // 数据
         this._handlers = []; // 处理函数的队列
         // 在executor中执行resolve & reject,抽离为私有方法
@@ -77,7 +74,7 @@ class MyPromise {
      */
     _runHandlers() {
         // 目前任务在挂起
-        if (this._state === promiseState.PENDING) {
+        if (this._state === MyPromise.PENDING) {
             return;
         }
         while (this._handlers[0]) {
@@ -104,7 +101,7 @@ class MyPromise {
             }
             // 如果执行器不是一个有效的函数
             if (typeof executor !== 'function') {
-                this._state === promiseState.FULFILLED ? resolve(this._value) : reject(this._value);
+                this._state === MyPromise.FULFILLED ? resolve(this._value) : reject(this._value);
                 return;
             }
             // 有效的执行器：返回一般数据、返回promise
@@ -130,8 +127,8 @@ class MyPromise {
     then(onFulfilled, onRejected) {
         return new MyPromise((resolve, reject) => {
             // 注意这里的resolve、reject就是_resolve、_reject
-            this._pushHandler(onFulfilled, promiseState.FULFILLED, resolve, reject);
-            this._pushHandler(onRejected, promiseState.REJECTED, resolve, reject);
+            this._pushHandler(onFulfilled, MyPromise.FULFILLED, resolve, reject);
+            this._pushHandler(onRejected, MyPromise.REJECTED, resolve, reject);
             this._runHandlers(); // 执行队列
         });
     }
@@ -168,7 +165,7 @@ class MyPromise {
      */
     _resolve(data) {
         // 改变状态和数据
-        this._changeState(promiseState.FULFILLED, data);
+        this._changeState(MyPromise.FULFILLED, data);
     }
 
     /**
@@ -176,7 +173,7 @@ class MyPromise {
      * @param {any} reason 任务失败的原因 
      */
     _reject(reason) {
-        this._changeState(promiseState.REJECTED, reason)
+        this._changeState(MyPromise.REJECTED, reason)
     }
 
     /**
@@ -186,7 +183,7 @@ class MyPromise {
      */
     _changeState(newState, value) {
         // 已经修改过状态
-        if (this._state !== promiseState.PENDING) {
+        if (this._state !== MyPromise.PENDING) {
             return;
         }
         this._state = newState;
@@ -234,3 +231,7 @@ class MyPromise {
 //     await delay(2000);
 //     console.log('end');
 // })()
+
+Promise.prototype.catch = () => {
+    return new Promise().then(null, reject);
+}
