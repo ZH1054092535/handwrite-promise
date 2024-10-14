@@ -232,6 +232,17 @@ class MyPromise {
 //     console.log('end');
 // })()
 
-Promise.prototype.catch = () => {
-    return new Promise().then(null, reject);
-}
+// 直接使用promise实现
+// Promise.prototype.catch = function (onRejected) {
+//     return this.then(null, onRejected);
+// }
+
+// Promise.prototype.finally = function (onSettled) {
+//     return this.then((data) => {
+//         onSettled();
+//         return data;
+//     }, (reason) => {
+//         onSettled();
+//         throw reason;
+//     })
+// }
