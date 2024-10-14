@@ -28,6 +28,16 @@ function runMicroTask(callback) {
     }
 }
 
+/**
+ * 判断一个数据是否是promise对象
+ * @param {any} obj 
+ * @returns 
+ */
+function isPromise(obj) {
+    // 存在、对象、有then方法
+    return !!(obj && typeof obj === 'object' && typeof obj.then === 'function');
+}
+
 class MyPromise {
 
     /**
@@ -63,6 +73,56 @@ class MyPromise {
     }
 
     /**
+     * 根据实际情况，执行队列
+     */
+    _runHandlers() {
+        // 目前任务在挂起
+        if (this._state === promiseState.PENDING) {
+            return;
+        }
+        while (this._handlers[0]) {
+            const handler = this._handlers[0];
+            this._runOneHandler(handler)
+            this._handlers.shift();
+        }
+    }
+
+    /**
+     * 处理一个handler
+     */
+    _runOneHandler({
+        executor,
+        state,
+        resolve,
+        reject
+    }) {
+        // 放到微队列中执行
+        runMicroTask(() => {
+            // 状态不一致不做处理
+            if (this._state !== state) {
+                return;
+            }
+            // 如果执行器不是一个有效的函数
+            if (typeof executor !== 'function') {
+                this._state === promiseState.FULFILLED ? resolve(this._value) : reject(this._value);
+                return;
+            }
+            // 有效的执行器：返回一般数据、返回promise
+            try {
+                const result = executor(this._value);
+                if (isPromise(result)) {
+                    result.then(resolve, reject);
+                } else {
+                    resolve(result);
+                }
+            } catch (error) {
+                reject(error);
+                console.log(error);
+            }
+        })
+    }
+
+    /**
      * Promise A+规范的then
      * @param {Function} onFulfilled  状态成功时的执行
      * @param {Function} onRejected 状态失败时的执行
@@ -72,6 +132,7 @@ class MyPromise {
             // 注意这里的resolve、reject就是_resolve、_reject
             this._pushHandler(onFulfilled, promiseState.FULFILLED, resolve, reject);
             this._pushHandler(onRejected, promiseState.REJECTED, resolve, reject);
+            this._runHandlers(); // 执行队列
         });
     }
 
@@ -105,11 +166,17 @@ class MyPromise {
         }
         this._state = newState;
         this._value = value;
+        this._runHandlers()
     }
 }
 
 const myPro = new MyPromise((resolve, reject) => {
-    throw new Error(1)
+    setTimeout(() => {
+        resolve(1)
+    }, 1000)
 })
 
+myPro.then(() => {
+    console.log(1);
+})
 console.log(myPro)
